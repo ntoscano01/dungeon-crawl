@@ -16,6 +16,8 @@ Design phase — no application code yet.
 - [`docs/engine-llm-contract.md`](docs/engine-llm-contract.md) — the
   tool-calling interface between the deterministic game engine and the LLM
   narrator, and the turn loop that ties them together.
+- [`docs/data-model.md`](docs/data-model.md) — character/party, map graph,
+  and session/save state, and how the four UI panels read from it.
 
 ## Planned stack
 
