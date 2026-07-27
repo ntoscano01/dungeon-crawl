@@ -7,12 +7,17 @@ movement and combat are resolved with real dice rolls.
 
 ## Status
 
-Early scaffold. The deterministic engine (generation, movement, attack,
-dice), the four-panel UI shell, and the LLM narrator/intent-parser (real
-Claude API tool-use calls, with an offline fallback when no API key is
-configured) all work end-to-end against an in-memory session store and one
-starter content pack. Not yet wired: Postgres persistence (schema exists,
-engine doesn't use it yet), and the 3D dice animation / real map renderer.
+Early scaffold, but the full turn loop is real. All nine engine tools
+(`move`, `attack`, `use_item`, `interact`, `search`, `rest`, `roll_check`,
+`inspect`, `party_status`) are implemented against an in-memory session
+store and one starter content pack — including monsters with persistent
+per-instance HP (tracked across attacks, not re-rolled each hit) and
+one-shot tile events (traps, discoveries) resolved through a weighted
+outcome table. The LLM narrator/intent-parser makes real Claude API
+tool-use calls, with an offline keyword-parser/template fallback covering
+the same nine tools when no API key is configured. Not yet wired: Postgres
+persistence (schema exists, engine doesn't use it yet), and the 3D dice
+animation / real map renderer.
 
 ## Design docs
 
@@ -56,9 +61,11 @@ isn't needed yet — Prisma persistence isn't wired into the engine.
 - `src/lib/types/` — shared TypeScript types mirroring the design docs
   (`content-pack.ts`, `state.ts`, `engine.ts`, `ui.ts`)
 - `src/lib/engine/` — the deterministic game engine: `rng.ts` (seeded PRNG),
-  `dice.ts`, `generation.ts` (map generation), `tools.ts` (tool-call
-  handlers: move, attack, ...), `session.ts` (in-memory session store),
-  `context.ts` (builds the bounded `TurnContext` handed to the LLM)
+  `dice.ts`, `generation.ts` (map generation, incl. rolling monster
+  instance HP), `events.ts` (resolves a tile event's weighted outcome
+  table and applies its effect), `tools.ts` (handlers for all nine
+  `EngineTool`s), `session.ts` (in-memory session store), `context.ts`
+  (builds the bounded `TurnContext` handed to the LLM)
 - `src/lib/content-packs/` — pack loader + the `base` starter pack
 - `src/lib/llm/` — `client.ts` (Anthropic SDK client), `parse-intent.ts`
   (tool-use call mapping player text to one `EngineTool`), `narrate.ts`
@@ -75,10 +82,14 @@ isn't needed yet — Prisma persistence isn't wired into the engine.
 
 ## Known gaps / next steps
 
-- Only `move`, `attack`, and `party_status` are implemented in
-  `tools.ts`; `search`, `use_item`, `interact`, `rest`, `roll_check`,
-  `inspect` throw `EngineValidationError("not implemented yet")`
-- Swap the in-memory session store for Prisma-backed persistence
+- Swap the in-memory session store for Prisma-backed persistence (the
+  schema's `MapNodeContent` model needs `instanceId`/`hpCurrent`/`hpMax`
+  wired up to match `MonsterInstance` once this happens)
+- `reveal_tile` event effects are a no-op — the content-pack schema
+  doesn't yet identify which tile to reveal
+- All actions currently act on `party.members[0]`; no turn-order UI or
+  per-character targeting yet (`rest` is the exception — it heals the
+  whole party)
 - Real map renderer (canvas/SVG with connections) and 3D dice roll
   animation (Three.js)
 - App icons for `public/manifest.json` (`icon-192.png`, `icon-512.png`

@@ -68,13 +68,24 @@ rules), then incrementally *revealed* as the party moves — the client never
 receives unrevealed tiles.
 
 ```ts
+// A live monster on a tile — distinct from the Monster content-pack
+// template. instanceId is unique per spawn so two monsters from the same
+// template (e.g. two goblin_scout) can be targeted and defeated
+// independently, and hp persists across attacks instead of being re-rolled
+// on every hit.
+interface MonsterInstance {
+  instanceId: string;
+  templateId: string;       // references the Monster definition from the content pack
+  hp: { current: number; max: number };
+}
+
 interface MapNode {
   id: string;               // unique instance ID, distinct from the Tile template's id
   tileTemplateId: string;   // references the Tile definition from the content pack
   depth: number;
   revealed: boolean;
   resolvedContent: {        // this instance's actual rolled spawn-table results
-    monsterIds: string[];
+    monsters: MonsterInstance[];
     itemIds: string[];
     npcIds: string[];
     eventId: string | null;

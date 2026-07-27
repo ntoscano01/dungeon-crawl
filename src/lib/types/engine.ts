@@ -51,6 +51,7 @@ export interface MoveResult {
   reason?: string;
   newTile?: ResolvedTile;
   triggeredEventId?: string;
+  eventNarrativeHint?: string;
   mapDelta?: {
     addedNodeId?: string;
     connection?: { fromNodeId: string; toNodeId: string; direction: Direction };

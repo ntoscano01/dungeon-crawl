@@ -32,8 +32,19 @@ export interface PartyState {
   turnOrder: string[];
 }
 
+// A live monster on a tile. Distinct from Monster (the content-pack
+// template) — instanceId is unique per spawn so two monsters from the same
+// template (e.g. two goblin_scout) can be targeted and defeated
+// independently, and hp persists across attacks instead of being re-rolled
+// each hit.
+export interface MonsterInstanceState {
+  instanceId: string;
+  templateId: string;
+  hp: { current: number; max: number };
+}
+
 export interface ResolvedTileContent {
-  monsterIds: string[];
+  monsters: MonsterInstanceState[];
   itemIds: string[];
   npcIds: string[];
   eventId: string | null;

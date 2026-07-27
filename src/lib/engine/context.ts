@@ -33,9 +33,9 @@ export function buildTurnContext(session: SessionState): TurnContext {
 export function describeTurnContext(context: TurnContext, pack: ContentPack): string {
   const tileTemplate = pack.tiles.find((t) => t.id === context.currentTile.node.tileTemplateId);
 
-  const monsters = context.currentTile.content.monsterIds.map((id) => {
-    const m = pack.monsters.find((x) => x.id === id);
-    return `${id} (${m?.name ?? "unknown monster"})`;
+  const monsters = context.currentTile.content.monsters.map((instance) => {
+    const m = pack.monsters.find((x) => x.id === instance.templateId);
+    return `${instance.instanceId} (${m?.name ?? "unknown monster"}, ${instance.hp.current}/${instance.hp.max} HP)`;
   });
   const items = context.currentTile.content.itemIds.map((id) => {
     const i = pack.items.find((x) => x.id === id);

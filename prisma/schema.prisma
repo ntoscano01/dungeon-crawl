@@ -104,7 +104,14 @@ model MapNodeContent {
   mapNode   MapNode @relation(fields: [mapNodeId], references: [id], onDelete: Cascade)
 
   kind      String  // "monster" | "item" | "npc" | "event"
-  refId     String
+  refId     String  // template id (Monster/Item/NPC/Event); for "monster" this is the templateId, not the instanceId
+
+  // Only set when kind == "monster" — instance HP persists across attacks
+  // rather than being re-rolled on every hit (see docs/data-model.md
+  // MonsterInstance).
+  instanceId String?
+  hpCurrent  Int?
+  hpMax      Int?
 
   @@index([mapNodeId])
 }

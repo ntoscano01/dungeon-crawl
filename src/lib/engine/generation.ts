@@ -4,8 +4,9 @@
 // generator already placed.
 
 import type { ContentPack, Tile } from "../types/content-pack";
-import type { MapGraphState, MapNodeState, ResolvedTileContent } from "../types/state";
+import type { MapGraphState, MapNodeState, MonsterInstanceState, ResolvedTileContent } from "../types/state";
 import { createRng, weightedPick } from "./rng";
+import { rollDice } from "./dice";
 
 function resolveSpawnTable(
   table: { id: string; weight: number; maxCount?: number }[] | undefined,
@@ -21,6 +22,24 @@ function resolveSpawnTable(
   return results;
 }
 
+function resolveMonsterInstances(
+  pack: ContentPack,
+  table: { id: string; weight: number; maxCount?: number }[] | undefined,
+  rng: () => number,
+  instancePrefix: string
+): MonsterInstanceState[] {
+  const templateIds = resolveSpawnTable(table, rng);
+  return templateIds.map((templateId, i) => {
+    const monster = pack.monsters.find((m) => m.id === templateId);
+    const maxHp = monster ? rollDice(monster.stats.hp, rng).result : 1;
+    return {
+      instanceId: `${instancePrefix}_${templateId}_${i}`,
+      templateId,
+      hp: { current: maxHp, max: maxHp },
+    };
+  });
+}
+
 export function generateMap(
   pack: ContentPack,
   seed: string,
@@ -34,14 +53,15 @@ export function generateMap(
   const edges: MapGraphState["edges"] = [];
 
   const placeNode = (tile: Tile, depth: number, x: number, y: number): MapNodeState => {
+    const nodeId = `${tile.id}_${nodes.length}`;
     const content: ResolvedTileContent = {
-      monsterIds: resolveSpawnTable(tile.spawnTables.monsters, rng),
+      monsters: resolveMonsterInstances(pack, tile.spawnTables.monsters, rng, nodeId),
       itemIds: resolveSpawnTable(tile.spawnTables.items, rng),
       npcIds: resolveSpawnTable(tile.spawnTables.npcs, rng),
       eventId: resolveSpawnTable(tile.spawnTables.events, rng)[0] ?? null,
     };
     const node: MapNodeState = {
-      id: `${tile.id}_${nodes.length}`,
+      id: nodeId,
       tileTemplateId: tile.id,
       depth,
       revealed: depth === 0,

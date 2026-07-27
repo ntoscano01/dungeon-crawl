@@ -231,8 +231,32 @@ function parseIntentFallback(input: string): EngineTool | { clarify: string } {
     return { name: "attack", args: { targetId: attackMatch[1] } };
   }
 
+  const useMatch = /\b(?:use|drink|eat|apply)\s+(?:the\s+)?(\w+)/.exec(text);
+  if (useMatch) {
+    return { name: "use_item", args: { itemId: useMatch[1] } };
+  }
+
+  const interactMatch = /\b(talk to|talk|open|pull|push|examine)\s+(?:the\s+)?(\w+)/.exec(text);
+  if (interactMatch) {
+    return { name: "interact", args: { targetId: interactMatch[2], action: interactMatch[1] } };
+  }
+
+  const inspectMatch = /\b(?:inspect|look at)\s+(?:the\s+)?(\w+)/.exec(text);
+  if (inspectMatch) {
+    return { name: "inspect", args: { targetId: inspectMatch[1] } };
+  }
+
   if (/\b(search|look around|examine room)\b/.test(text)) {
     return { name: "search", args: {} };
+  }
+
+  if (/\brest\b/.test(text)) {
+    return { name: "rest", args: { type: /\blong\b/.test(text) ? "long" : "short" } };
+  }
+
+  const checkMatch = /\b(?:check|roll)\s+(\w+)/.exec(text);
+  if (checkMatch) {
+    return { name: "roll_check", args: { skill: checkMatch[1], difficultyClass: 12 } };
   }
 
   if (/\b(status|inventory|party)\b/.test(text)) {

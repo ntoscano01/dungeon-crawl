@@ -13,9 +13,7 @@ function buildFacts(result: EngineToolResult, pack: ContentPack): string {
       const tileTemplateId = result.newTile?.node.tileTemplateId;
       const tile = pack.tiles.find((t) => t.id === tileTemplateId);
       const hints = tile?.descriptionHints.join("; ") ?? "";
-      const eventNote = result.triggeredEventId
-        ? "Something on this tile catches the party's attention, though its nature isn't yet clear."
-        : "Nothing else of note here yet.";
+      const eventNote = result.eventNarrativeHint ?? "Nothing else of note here yet.";
       return `The party moves into a new area: ${tile?.name ?? "an unnamed tile"}. Flavor hints: ${hints}. ${eventNote}`;
     }
     case "attack": {
@@ -77,7 +75,7 @@ function narrateFallback(result: EngineToolResult): string {
   switch (result.name) {
     case "move":
       if (!result.moved) return `You can't go that way — ${result.reason}.`;
-      return `You move on. ${result.newTile?.content.eventId ? "Something feels off here." : "The way ahead is clear."}`;
+      return `You move on. ${result.eventNarrativeHint ?? "The way ahead is clear."}`;
     case "attack":
       if (!result.hit) return "Your attack goes wide, missing entirely.";
       return `${result.narrativeHint} — you deal ${result.damageRoll?.result} damage.${
