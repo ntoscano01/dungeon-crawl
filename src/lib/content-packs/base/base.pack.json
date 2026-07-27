@@ -1,0 +1,120 @@
+{
+  "id": "base",
+  "tiles": [
+    {
+      "id": "entry_hall",
+      "name": "Entry Hall",
+      "tags": ["safe", "start"],
+      "type": "room",
+      "exits": ["north"],
+      "placement": { "weight": 1, "maxPerDungeon": 1, "minDepth": 0, "maxDepth": 0 },
+      "spawnTables": {},
+      "descriptionHints": [
+        "a dusty antechamber lit by a single guttering torch",
+        "cracked flagstones and the smell of cold stone"
+      ]
+    },
+    {
+      "id": "stone_corridor",
+      "name": "Stone Corridor",
+      "tags": ["corridor"],
+      "type": "corridor",
+      "exits": ["north", "south", "east", "west"],
+      "placement": { "weight": 5, "minDepth": 1 },
+      "spawnTables": {
+        "monsters": [{ "id": "rat_swarm", "weight": 3 }],
+        "events": [{ "id": "loose_stone", "weight": 1 }]
+      },
+      "descriptionHints": ["rough-hewn walls slick with condensation", "distant dripping water"]
+    },
+    {
+      "id": "guard_room",
+      "name": "Guard Room",
+      "tags": ["room"],
+      "type": "room",
+      "exits": ["north", "south"],
+      "placement": { "weight": 3, "minDepth": 1 },
+      "spawnTables": {
+        "monsters": [{ "id": "goblin_scout", "weight": 4, "maxCount": 2 }],
+        "items": [{ "id": "rusty_sword", "weight": 2 }]
+      },
+      "descriptionHints": ["an overturned table and scattered bones", "a rack of broken spears"]
+    },
+    {
+      "id": "stairs_down",
+      "name": "Stairwell",
+      "tags": ["stairs"],
+      "type": "stairs",
+      "exits": ["north", "down"],
+      "placement": { "weight": 1, "minDepth": 1 },
+      "spawnTables": {},
+      "descriptionHints": ["a spiral of worn steps descending into darkness"]
+    }
+  ],
+  "items": [
+    {
+      "id": "rusty_sword",
+      "name": "Rusty Sword",
+      "tags": ["weapon", "starter"],
+      "category": "weapon",
+      "rarity": "common",
+      "effects": { "damageDice": "1d6" },
+      "stackable": false,
+      "value": 5
+    },
+    {
+      "id": "minor_healing_draught",
+      "name": "Minor Healing Draught",
+      "tags": ["consumable"],
+      "category": "consumable",
+      "rarity": "common",
+      "effects": { "healAmount": "2d4+2" },
+      "stackable": true,
+      "value": 10
+    }
+  ],
+  "monsters": [
+    {
+      "id": "rat_swarm",
+      "name": "Rat Swarm",
+      "tags": ["vermin", "low_tier"],
+      "tier": "trivial",
+      "stats": { "hp": "2d6", "armorClass": 10, "attackBonus": 1, "damageDice": "1d3", "speed": 30 },
+      "behavior": "aggressive",
+      "lootTable": [],
+      "descriptionHints": ["a chittering knot of matted fur and needle teeth"]
+    },
+    {
+      "id": "goblin_scout",
+      "name": "Goblin Scout",
+      "tags": ["goblinoid", "low_tier"],
+      "tier": "standard",
+      "stats": { "hp": "3d6+3", "armorClass": 13, "attackBonus": 3, "damageDice": "1d6+1", "speed": 30 },
+      "behavior": "ambush",
+      "lootTable": [{ "itemId": "rusty_sword", "weight": 1, "dropChance": 0.2 }],
+      "descriptionHints": ["a wiry goblin in mismatched leather, blade already drawn"]
+    }
+  ],
+  "npcs": [],
+  "events": [
+    {
+      "id": "loose_stone",
+      "name": "Loose Stone",
+      "tags": ["hazard"],
+      "trigger": "on_enter",
+      "outcomes": [
+        {
+          "weight": 1,
+          "effect": { "type": "damage", "params": { "amount": "1d4" } },
+          "narrativeHint": "a stone shifts underfoot and drops away, wrenching an ankle"
+        },
+        {
+          "weight": 2,
+          "effect": { "type": "set_flag", "params": { "key": "noticed_loose_stone" } },
+          "narrativeHint": "a suspiciously loose flagstone catches the eye, easily stepped around"
+        }
+      ],
+      "requiresRoll": { "skill": "perception", "difficultyClass": 12 }
+    }
+  ]
+}

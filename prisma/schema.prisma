@@ -1,0 +1,154 @@
+// Prisma schema — mirrors docs/data-model.md.
+// toolCall/toolResult are stored as JSON to stay flexible as new engine
+// tools get added; everything queried/filtered directly stays relational.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SessionStatus {
+  active
+  victory
+  party_wiped
+  abandoned
+}
+
+model Session {
+  id        String        @id @default(cuid())
+  ownerId   String
+  rulesetId String
+  status    SessionStatus @default(active)
+  seed      String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  characters CharacterState[]
+  mapNodes   MapNode[]
+  mapEdges   MapEdge[]
+  turnLog    TurnLogEntry[]
+  sharedFlags SharedFlag[]
+}
+
+model CharacterState {
+  id            String  @id @default(cuid())
+  sessionId     String
+  session       Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  name          String
+  classId       String
+  level         Int     @default(1)
+
+  hpCurrent     Int
+  hpMax         Int
+  armorClass    Int
+  stats         Json    // { strength, dexterity, ... }
+
+  turnOrderIndex Int?
+  isDowned      Boolean @default(false)
+
+  items          CharacterItem[]
+  statusEffects  StatusEffect[]
+
+  @@index([sessionId])
+}
+
+model CharacterItem {
+  id            String         @id @default(cuid())
+  characterId   String
+  character     CharacterState @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  itemId        String
+  quantity      Int            @default(1)
+  equippedSlot  String?        // "mainHand" | "offHand" | "armor" | "accessory1" | "accessory2" | null
+
+  @@index([characterId])
+}
+
+model StatusEffect {
+  id              String         @id @default(cuid())
+  characterId     String
+  character       CharacterState @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  effectId        String
+  remainingTurns  Int?           // null means "until_rest"
+
+  @@index([characterId])
+}
+
+model MapNode {
+  id             String  @id @default(cuid())
+  sessionId      String
+  session        Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  tileTemplateId String
+  depth          Int
+  revealed       Boolean @default(false)
+  positionX      Int
+  positionY      Int
+
+  content        MapNodeContent[]
+  edgesFrom      MapEdge[] @relation("EdgeFrom")
+  edgesTo        MapEdge[] @relation("EdgeTo")
+
+  @@index([sessionId])
+}
+
+model MapNodeContent {
+  id        String  @id @default(cuid())
+  mapNodeId String
+  mapNode   MapNode @relation(fields: [mapNodeId], references: [id], onDelete: Cascade)
+
+  kind      String  // "monster" | "item" | "npc" | "event"
+  refId     String
+
+  @@index([mapNodeId])
+}
+
+model MapEdge {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  fromNodeId    String
+  fromNode      MapNode  @relation("EdgeFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNodeId      String
+  toNode        MapNode  @relation("EdgeTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  direction     String   // "north" | "south" | "east" | "west" | "up" | "down"
+  via           String?
+  traversable   Boolean  @default(true)
+
+  @@index([sessionId])
+}
+
+model SharedFlag {
+  id        String  @id @default(cuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  key       String
+  value     Boolean @default(true)
+
+  @@unique([sessionId, key])
+}
+
+model TurnLogEntry {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  turnNumber  Int
+  playerInput String
+  toolCall    Json
+  toolResult  Json
+  narration   String
+
+  createdAt   DateTime @default(now())
+
+  @@index([sessionId, turnNumber])
+}

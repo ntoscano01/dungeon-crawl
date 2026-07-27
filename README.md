@@ -7,7 +7,12 @@ movement and combat are resolved with real dice rolls.
 
 ## Status
 
-Design phase — no application code yet.
+Early scaffold. The deterministic engine (generation, movement, attack,
+dice) and the four-panel UI shell work end-to-end against an in-memory
+session store and one starter content pack. Not yet wired: the real LLM
+call (intent parsing and narration are placeholder stubs), Postgres
+persistence (schema exists, engine doesn't use it yet), and the 3D dice
+animation / real map renderer.
 
 ## Design docs
 
@@ -19,9 +24,60 @@ Design phase — no application code yet.
 - [`docs/data-model.md`](docs/data-model.md) — character/party, map graph,
   and session/save state, and how the four UI panels read from it.
 
-## Planned stack
+## Stack
 
-- Next.js + TypeScript, deployed as a PWA (web + installable mobile)
-- Node/TypeScript backend, Postgres for persistence
-- Three.js + a physics engine for real-time 3D dice rolls
-- Canvas/SVG for the live-building dungeon map
+- Next.js (App Router) + TypeScript, deployed as a PWA (web + installable
+  mobile)
+- Node/TypeScript backend (Next.js route handlers), Postgres via Prisma for
+  persistence
+- Three.js + a physics engine for real-time 3D dice rolls (not added yet)
+- Canvas/SVG for the live-building dungeon map (current `MapPanel` is a
+  placeholder grid, not the real renderer)
+
+## Running locally
+
+```bash
+npm install
+npm run dev
+```
+
+Opens the game shell at `http://localhost:3000`. A session is created
+automatically on load, generated from `src/lib/content-packs/base/base.pack.json`.
+Try commands like "go north" or "attack rat_swarm" in the narration panel.
+
+Copy `.env.example` to `.env` and fill in `DATABASE_URL`/`ANTHROPIC_API_KEY`
+once Prisma persistence and the real LLM call are wired in — neither is
+required to run the current scaffold.
+
+## Code layout
+
+- `src/lib/types/` — shared TypeScript types mirroring the design docs
+  (`content-pack.ts`, `state.ts`, `engine.ts`, `ui.ts`)
+- `src/lib/engine/` — the deterministic game engine: `rng.ts` (seeded PRNG),
+  `dice.ts`, `generation.ts` (map generation), `tools.ts` (tool-call
+  handlers: move, attack, ...), `session.ts` (in-memory session store)
+- `src/lib/content-packs/` — pack loader + the `base` starter pack
+- `src/lib/llm/` — `parse-intent.ts` and `narrate.ts`, currently keyword/
+  template stubs standing in for the real Claude API calls
+- `src/app/api/session`, `src/app/api/turn` — route handlers implementing
+  the turn loop
+- `src/components/` — the four UI panels (`NarrationPanel`, `MapPanel`,
+  `CharacterPanel`, `InventoryPanel`) plus `src/app/page.tsx`, which lays
+  them out (grid on desktop, tabs on mobile)
+- `prisma/schema.prisma` — persistence schema matching `docs/data-model.md`
+  (not yet connected to the engine)
+
+## Known gaps / next steps
+
+- Wire `src/lib/llm/parse-intent.ts` and `narrate.ts` to the Claude API
+  (tool-use) instead of the current keyword parser / template strings
+- Only `move`, `attack`, and `party_status` are implemented in
+  `tools.ts`; `search`, `use_item`, `interact`, `rest`, `roll_check`,
+  `inspect` throw `EngineValidationError("not implemented yet")`
+- Swap the in-memory session store for Prisma-backed persistence
+- Real map renderer (canvas/SVG with connections) and 3D dice roll
+  animation (Three.js)
+- App icons for `public/manifest.json` (`icon-192.png`, `icon-512.png`
+  referenced but not present yet)
+- Party support beyond a single character (data model is ready; UI/engine
+  currently only creates one)
