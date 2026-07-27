@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, saveSession } from "@/lib/engine/session";
 import { loadContentPack } from "@/lib/content-packs/loader";
 import { resolveEngineTool, EngineValidationError } from "@/lib/engine/tools";
+import { buildTurnContext } from "@/lib/engine/context";
 import { parseIntent } from "@/lib/llm/parse-intent";
 import { narrate } from "@/lib/llm/narrate";
 
@@ -19,12 +20,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "session not found" }, { status: 404 });
   }
 
-  const intent = parseIntent(input);
+  const pack = loadContentPack(session.rulesetId);
+  const turnContext = buildTurnContext(session);
+
+  const intent = await parseIntent(input, turnContext, pack);
   if ("clarify" in intent) {
     return NextResponse.json({ session, narration: intent.clarify, clarify: true });
   }
-
-  const pack = loadContentPack(session.rulesetId);
 
   let result;
   try {
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
     throw err;
   }
-  const narration = narrate(result);
+  const narration = await narrate(result, pack);
 
   session.turnLog.push({
     turnNumber: session.turnLog.length + 1,

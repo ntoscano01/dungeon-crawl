@@ -8,11 +8,11 @@ movement and combat are resolved with real dice rolls.
 ## Status
 
 Early scaffold. The deterministic engine (generation, movement, attack,
-dice) and the four-panel UI shell work end-to-end against an in-memory
-session store and one starter content pack. Not yet wired: the real LLM
-call (intent parsing and narration are placeholder stubs), Postgres
-persistence (schema exists, engine doesn't use it yet), and the 3D dice
-animation / real map renderer.
+dice), the four-panel UI shell, and the LLM narrator/intent-parser (real
+Claude API tool-use calls, with an offline fallback when no API key is
+configured) all work end-to-end against an in-memory session store and one
+starter content pack. Not yet wired: Postgres persistence (schema exists,
+engine doesn't use it yet), and the 3D dice animation / real map renderer.
 
 ## Design docs
 
@@ -45,9 +45,11 @@ Opens the game shell at `http://localhost:3000`. A session is created
 automatically on load, generated from `src/lib/content-packs/base/base.pack.json`.
 Try commands like "go north" or "attack rat_swarm" in the narration panel.
 
-Copy `.env.example` to `.env` and fill in `DATABASE_URL`/`ANTHROPIC_API_KEY`
-once Prisma persistence and the real LLM call are wired in — neither is
-required to run the current scaffold.
+Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY` to use the real
+LLM narrator/intent-parser — without it, `src/lib/llm/` falls back to a
+keyword parser and template narration so the app still runs (a failed or
+missing-credential API call is caught and logged, not fatal). `DATABASE_URL`
+isn't needed yet — Prisma persistence isn't wired into the engine.
 
 ## Code layout
 
@@ -55,10 +57,14 @@ required to run the current scaffold.
   (`content-pack.ts`, `state.ts`, `engine.ts`, `ui.ts`)
 - `src/lib/engine/` — the deterministic game engine: `rng.ts` (seeded PRNG),
   `dice.ts`, `generation.ts` (map generation), `tools.ts` (tool-call
-  handlers: move, attack, ...), `session.ts` (in-memory session store)
+  handlers: move, attack, ...), `session.ts` (in-memory session store),
+  `context.ts` (builds the bounded `TurnContext` handed to the LLM)
 - `src/lib/content-packs/` — pack loader + the `base` starter pack
-- `src/lib/llm/` — `parse-intent.ts` and `narrate.ts`, currently keyword/
-  template stubs standing in for the real Claude API calls
+- `src/lib/llm/` — `client.ts` (Anthropic SDK client), `parse-intent.ts`
+  (tool-use call mapping player text to one `EngineTool`), `narrate.ts`
+  (turns an `EngineToolResult` into prose, constrained to given facts).
+  Both fall back to a keyword parser / template strings if the API call
+  fails, so a missing key or transient error doesn't break a turn.
 - `src/app/api/session`, `src/app/api/turn` — route handlers implementing
   the turn loop
 - `src/components/` — the four UI panels (`NarrationPanel`, `MapPanel`,
@@ -69,8 +75,6 @@ required to run the current scaffold.
 
 ## Known gaps / next steps
 
-- Wire `src/lib/llm/parse-intent.ts` and `narrate.ts` to the Claude API
-  (tool-use) instead of the current keyword parser / template strings
 - Only `move`, `attack`, and `party_status` are implemented in
   `tools.ts`; `search`, `use_item`, `interact`, `rest`, `roll_check`,
   `inspect` throw `EngineValidationError("not implemented yet")`
