@@ -43,7 +43,8 @@ function resolveMonsterInstances(
 export function generateMap(
   pack: ContentPack,
   seed: string,
-  targetTileCount: number
+  targetTileCount: number,
+  idPrefix: string
 ): MapGraphState {
   const rng = createRng(seed);
   const startTile = pack.tiles.find((t) => t.tags.includes("start"));
@@ -53,7 +54,10 @@ export function generateMap(
   const edges: MapGraphState["edges"] = [];
 
   const placeNode = (tile: Tile, depth: number, x: number, y: number): MapNodeState => {
-    const nodeId = `${tile.id}_${nodes.length}`;
+    // Prefixed with idPrefix (the owning session's id) so node ids are
+    // globally unique — MapNode.id is a global primary key once persisted,
+    // not just unique within one session's in-memory node array.
+    const nodeId = `${idPrefix}_${tile.id}_${nodes.length}`;
     const content: ResolvedTileContent = {
       monsters: resolveMonsterInstances(pack, tile.spawnTables.monsters, rng, nodeId),
       itemIds: resolveSpawnTable(tile.spawnTables.items, rng),

@@ -1,21 +1,24 @@
-// In-memory session store. TODO: replace with Prisma persistence
-// (prisma/schema.prisma already models this) once auth/accounts exist —
-// this exists purely so the turn loop is runnable/testable now.
+// Session store backed by Postgres via Prisma (persistence.ts), with an
+// in-memory fallback so the app still runs if the database is unreachable
+// (no DATABASE_URL configured, connection refused, etc.) — the same
+// graceful-degradation pattern used for the LLM calls in src/lib/llm/.
 
 import type { SessionState } from "../types/state";
 import { loadContentPack } from "../content-packs/loader";
 import { generateMap } from "./generation";
+import { createSessionInDb, loadSessionFromDb, saveSessionToDb } from "./persistence";
 
-const sessions = new Map<string, SessionState>();
+const memorySessions = new Map<string, SessionState>();
 
-export function createSession(ownerId: string, rulesetId = "base"): SessionState {
+function buildNewSession(ownerId: string, rulesetId: string): SessionState {
   const pack = loadContentPack(rulesetId);
+  const sessionId = crypto.randomUUID();
   const seed = `${ownerId}-${Date.now()}`;
-  const map = generateMap(pack, seed, 8);
+  const map = generateMap(pack, seed, 8, sessionId);
   const startNode = map.nodes[0];
 
-  const session: SessionState = {
-    id: crypto.randomUUID(),
+  return {
+    id: sessionId,
     ownerId,
     rulesetId,
     createdAt: new Date().toISOString(),
@@ -44,16 +47,36 @@ export function createSession(ownerId: string, rulesetId = "base"): SessionState
     turnLog: [],
     status: "active",
   };
+}
 
-  sessions.set(session.id, session);
+export async function createSession(ownerId: string, rulesetId = "base"): Promise<SessionState> {
+  const session = buildNewSession(ownerId, rulesetId);
+  try {
+    await createSessionInDb(session);
+  } catch (err) {
+    console.error("DB session creation failed, falling back to in-memory store:", err, (err as { meta?: unknown })?.meta);
+    memorySessions.set(session.id, session);
+  }
   return session;
 }
 
-export function getSession(id: string): SessionState | undefined {
-  return sessions.get(id);
+export async function getSession(id: string): Promise<SessionState | undefined> {
+  try {
+    const fromDb = await loadSessionFromDb(id);
+    if (fromDb) return fromDb;
+  } catch (err) {
+    console.error("DB session load failed, falling back to in-memory store:", err);
+  }
+  return memorySessions.get(id);
 }
 
-export function saveSession(session: SessionState): void {
+export async function saveSession(session: SessionState): Promise<void> {
   session.updatedAt = new Date().toISOString();
-  sessions.set(session.id, session);
+  try {
+    await saveSessionToDb(session);
+    memorySessions.delete(session.id); // clear a stale in-memory copy now that the DB has it
+  } catch (err) {
+    console.error("DB session save failed, falling back to in-memory store:", err);
+    memorySessions.set(session.id, session);
+  }
 }

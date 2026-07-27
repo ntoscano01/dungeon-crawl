@@ -6,9 +6,10 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Connection URL lives in prisma.config.ts (Prisma 7 dropped schema-level
+// datasource.url in favor of config-file + driver adapter).
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum SessionStatus {
@@ -19,13 +20,17 @@ enum SessionStatus {
 }
 
 model Session {
-  id        String        @id @default(cuid())
-  ownerId   String
-  rulesetId String
-  status    SessionStatus @default(active)
-  seed      String
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  ownerId       String
+  rulesetId     String
+  status        SessionStatus @default(active)
+  seed          String
+  currentTileId String        // MapNode.id the party currently occupies.
+                               // Not an FK: MapNode rows are inserted after
+                               // the Session row in the same create, so a
+                               // constraint here would fail at insert time.
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   characters CharacterState[]
   mapNodes   MapNode[]

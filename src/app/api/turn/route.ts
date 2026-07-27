@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "sessionId and input are required" }, { status: 400 });
   }
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) {
     return NextResponse.json({ error: "session not found" }, { status: 404 });
   }
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     toolResult: result as unknown as Record<string, unknown>,
     narration,
   });
-  saveSession(session);
+  await saveSession(session);
 
   return NextResponse.json({ session, narration, toolResult: result });
 }

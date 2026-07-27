@@ -144,17 +144,19 @@ is reconstructable from it, which matters both for debugging engine bugs and
 for "what just happened" UI (scrollback in panel 1 is literally this log's
 `narration` field, in order).
 
-## Rough persistence shape (Postgres via Prisma)
+## Persistence (Postgres via Prisma)
 
-Not a final schema, just showing how the above maps to tables:
+Implemented in `prisma/schema.prisma` (connection config in
+`prisma.config.ts` — Prisma 7 moved this out of the schema file) and
+`src/lib/engine/persistence.ts`:
 
 ```
-Session        (id, ownerId, rulesetId, status, createdAt, updatedAt)
-Character      (id, sessionId FK, name, classId, level, hp_current, hp_max, armorClass, ...)
+Session        (id, ownerId, rulesetId, status, seed, currentTileId, createdAt, updatedAt)
+Character      (id, sessionId FK, name, classId, level, hpCurrent, hpMax, armorClass, ...)
 CharacterItem  (id, characterId FK, itemId, quantity, equippedSlot nullable)
 StatusEffect   (id, characterId FK, effectId, remainingTurns)
-MapNode        (id, sessionId FK, tileTemplateId, depth, revealed, position_x, position_y)
-MapNodeContent (id, mapNodeId FK, kind [monster|item|npc|event], refId)
+MapNode        (id, sessionId FK, tileTemplateId, depth, revealed, positionX, positionY)
+MapNodeContent (id, mapNodeId FK, kind [monster|item|npc|event], refId, instanceId/hpCurrent/hpMax if monster)
 MapEdge        (id, sessionId FK, fromNodeId FK, toNodeId FK, direction, via, traversable)
 TurnLogEntry   (id, sessionId FK, turnNumber, playerInput, toolCall JSON, toolResult JSON, narration)
 ```
@@ -163,6 +165,17 @@ TurnLogEntry   (id, sessionId FK, turnNumber, playerInput, toolCall JSON, toolRe
 types get added without a migration each time; everything else stays
 relational since it's queried/filtered directly (e.g. "all active sessions
 for a user", "current HP for party UI").
+
+`MapNode.id` is generated as `${sessionId}_${tileTemplateId}_${index}` —
+prefixed with the owning session's id so it's globally unique once it's a
+real primary key, not just unique within one session's in-memory node
+array (an early version of this scheme collided across sessions for
+exactly that reason).
+
+`session.ts` falls back to an in-memory `Map` if the database is
+unreachable, mirroring the LLM call's fail-closed pattern in
+`src/lib/llm/` — a missing `DATABASE_URL` or connection failure is logged,
+not fatal, and self-heals once the database is reachable again.
 
 ## How this ties the panels together
 
