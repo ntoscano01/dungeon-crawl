@@ -99,8 +99,13 @@ narration so the app still runs (same fail-closed pattern as the database).
 - `src/app/api/session`, `src/app/api/turn` — route handlers implementing
   the turn loop
 - `src/components/` — the four UI panels (`NarrationPanel`, `MapPanel`,
-  `CharacterPanel`, `InventoryPanel`) plus `src/app/page.tsx`, which lays
-  them out (grid on desktop, tabs on mobile)
+  `CharacterPanel`, `InventoryPanel`), `GameShell.tsx` (lays them out —
+  freely resizable drag-to-resize panels on desktop/tablet via
+  `react-resizable-panels`, persisted to `localStorage`; tabs on mobile),
+  and `ResizeHandle.tsx` (the styled drag divider). `src/app/page.tsx` is
+  a thin `next/dynamic(..., { ssr: false })` loader for `GameShell` —
+  its layout persistence needs `localStorage`, which doesn't exist during
+  Next's server render.
 - `prisma/schema.prisma` + `prisma/migrations/` — persistence schema
   matching `docs/data-model.md`; `prisma.config.ts` holds the connection
   config (Prisma 7 moved this out of the schema file)
